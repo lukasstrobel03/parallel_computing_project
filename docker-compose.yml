@@ -1,0 +1,69 @@
+services:
+  spark-master:
+    image: spark:python3
+    container_name: spark-master
+
+    command: >
+      /opt/spark/bin/spark-class
+      org.apache.spark.deploy.master.Master
+
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+  
+  spark-worker:
+    image: spark:python3
+    user: root
+    command: >
+      /opt/spark/bin/spark-class
+      org.apache.spark.deploy.worker.Worker
+      spark://spark-master:7077
+      --cores 2
+      --memory 2G
+
+    depends_on:
+      - spark-master
+
+    volumes:
+      - ./notebooks:/project/workspace
+      - ./data:/project/data
+      - ./src:/project/src
+      - ./output:/project/output
+
+  jupyter:
+    build:
+      dockerfile: Dockerfile
+
+    container_name: jupyter
+
+    user: root
+
+    environment:
+      HOME: /tmp
+      JUPYTER_CONFIG_DIR: /tmp/jupyter
+      JUPYTER_RUNTIME_DIR: /tmp/jupyter/runtime
+      JUPYTER_DATA_DIR: /tmp/jupyter/data
+      JUPYTER_TOKEN: jupyter_3009
+
+    ports:
+      - "8888:8888"
+      - "4040-4050:4040-4050"
+
+    volumes:
+      - ./notebooks:/project/workspace
+      - ./data:/project/data
+      - ./src:/project/src
+      - ./output:/project/output
+
+    working_dir: /workspace
+
+    depends_on:
+      - spark-master
+
+    command: >
+      jupyter lab
+      --ip=0.0.0.0
+      --port=8888
+      --no-browser
+      --allow-root
+
